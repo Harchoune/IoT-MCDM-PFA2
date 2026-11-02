@@ -1,0 +1,4 @@
+scenario,Energy Consumption,Range / Coverage,Data Rate,Total Cost,Latency,lambda_max,CI,CR,consistent
+Smart Agriculture (Remote Sensor Monitoring),0.2562,0.4797,0.0621,0.164,0.038,5.1062,0.0266,0.0237,True
+Smart Factory (Industrial Automation),0.0668,0.0415,0.2948,0.112,0.485,5.0503,0.0126,0.0112,True
+Smart City (Asset Tracking),0.1917,0.2996,0.0715,0.3943,0.0428,5.0827,0.0207,0.0185,True
