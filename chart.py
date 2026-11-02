@@ -15,7 +15,8 @@ import numpy as np
 # =============================================================================
 # FUNCTION: plot_ranking
 # =============================================================================
-def plot_ranking(ranking: list, scenario_name: str = "") -> None:
+def plot_ranking(ranking: list, scenario_name: str = "",
+                 output_path: str = "ranking_chart.png", show: bool = True) -> None:
     """
     Generates and displays a horizontal bar chart of TOPSIS closeness scores.
 
@@ -30,6 +31,9 @@ def plot_ranking(ranking: list, scenario_name: str = "") -> None:
                               Each entry is a dict with keys:
                               'rank', 'network', 'closeness'.
         scenario_name (str) : Name of the selected IoT scenario (for title).
+        output_path   (str) : Where the PNG file is saved.
+        show          (bool): If False, the figure is closed without being displayed
+                              (used by run_all.py for batch generation).
     """
 
     # --- Prepare data (display best at top → reverse for horizontal bar chart) ---
@@ -121,9 +125,9 @@ def plot_ranking(ranking: list, scenario_name: str = "") -> None:
     )
 
     # --- Legend ---
-    gold_patch   = mpatches.Patch(color="#FFD700", label="🥇 Rank 1 — Best Network")
-    silver_patch = mpatches.Patch(color="#C0C0C0", label="🥈 Rank 2")
-    bronze_patch = mpatches.Patch(color="#CD7F32", label="🥉 Rank 3")
+    gold_patch   = mpatches.Patch(color="#FFD700", label="Rank 1 — Best Network")
+    silver_patch = mpatches.Patch(color="#C0C0C0", label="Rank 2")
+    bronze_patch = mpatches.Patch(color="#CD7F32", label="Rank 3")
     blue_patch   = mpatches.Patch(color="#4A90D9", label="Other Networks")
     red_line     = mpatches.Patch(color="#E74C3C", label="Neutral threshold (Ci = 0.5)")
 
@@ -146,6 +150,9 @@ def plot_ranking(ranking: list, scenario_name: str = "") -> None:
     )
 
     plt.tight_layout()
-    plt.savefig("ranking_chart.png", dpi=150, bbox_inches="tight")
-    print("\n  📊 Chart saved as 'ranking_chart.png'")
-    plt.show()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"\n  📊 Chart saved as '{output_path}'")
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
