@@ -2,69 +2,14 @@
 # FILE: data/networks.py
 # ROLE: Technical Database — Decision Matrix + Criteria Metadata
 # DESCRIPTION:
-#   This file is the ONLY place where raw network performance data is stored.
-#   It is completely separated from the calculation engine.
-#   To update a value or add a new network, only this file needs to be modified.
-# =============================================================================
-
-import numpy as np
-
-# =============================================================================
-# SECTION 1: ALTERNATIVES (IoT Networks to evaluate)
-# =============================================================================
-
-ALTERNATIVES = [
-    "LoRaWAN",
-    "Sigfox",
-    "NB-IoT",
-    "LTE-M",
-    "Wi-Fi",
-    "BLE"
-]
-
-# =============================================================================
-# SECTION 2: CRITERIA METADATA
-# Each criterion is defined with:
-#   - 'name'      : Full display name
-#   - 'unit'      : Measurement unit
-#   - 'objective' : 'min' (lower is better) or 'max' (higher is better)
-# =============================================================================
-
-CRITERIA = [
-    {
-        "name": "Energy Consumption",
-        "unit": "mW",
-        "objective": "min"   # Lower energy consumption is better
-    },
-    {
-        "name": "Range / Coverage",
-        "unit": "km",
-        "objective": "max"   # Higher range is better
-    },
-    {
-        "name": "Data Rate",
-        "unit": "kbps",
-        "objective": "max"   # Higher data rate is better
-    },
-    {
-        "name": "Total Cost",
-        "unit": "USD/year",
-        "objective": "min"   # Lower cost is better
-    },
-    {
-        "name": "Latency",
-        "unit": "ms",
-        "objective": "min"   # Lower latency is better
-    }
-]
-
-# =============================================================================
-# SECTION 3: DECISION MATRIX
-# Rows    → Alternatives (6 networks)
-# Columns → Criteria (5 criteria), in the same order as CRITERIA list above:
-#           [Energy(mW), Range(km), DataRate(kbps), Cost(USD/yr), Latency(ms)]
+#   Loads the raw input data from the CSV files stored next to this module:
+#     - decision_matrix.csv : performance of each network on each criterion
+#     - criteria.csv        : name, unit and objective (min/max) of each criterion
+#     - scenarios/*.csv     : AHP pairwise comparison matrices (Saaty scale)
+#   The calculation engine (ahp.py, topsis.py) never reads files directly.
+#   To update a value or add a network, edit the CSV files only.
 #
-# Sources & References:
+# Decision matrix values (indicative orders of magnitude):
 #   - LoRaWAN : Low power (~50mW TX), long range (5-15km), low data rate (0.3-50kbps)
 #   - Sigfox  : Ultra-low power (~25mW), very long range (10-40km), very low rate (0.1kbps)
 #   - NB-IoT  : Moderate power (~300mW), good coverage (10km), moderate rate (250kbps)
@@ -73,89 +18,98 @@ CRITERIA = [
 #   - BLE     : Very low power (~15mW), very short range (0.1km), moderate rate (1000kbps)
 # =============================================================================
 
-DECISION_MATRIX = np.array([
-    # Energy(mW)  Range(km)  DataRate(kbps)  Cost(USD/yr)  Latency(ms)
-    [   50,          10,          50,             100,          500   ],  # LoRaWAN
-    [   25,          40,           0.1,             50,         6000  ],  # Sigfox
-    [  300,          10,         250,             200,          1500  ],  # NB-IoT
-    [  400,          10,        1000,             400,           100  ],  # LTE-M
-    [ 1000,           0.1,     54000,             150,            10  ],  # Wi-Fi
-    [   15,           0.1,      1000,              80,            10  ],  # BLE
-], dtype=float)
+import csv
+from fractions import Fraction
+from pathlib import Path
+
+import numpy as np
+
+DATA_DIR = Path(__file__).resolve().parent
+SCENARIO_DIR = DATA_DIR / "scenarios"
+
+
+def _read_rows(path: Path) -> list:
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
 
 
 # =============================================================================
-# SECTION 4: PREDEFINED AHP SCENARIOS
-# These are ready-to-use pairwise comparison matrices for common IoT use cases.
-# The matrix is 5x5 (one entry per pair of criteria).
+# SECTION 1: CRITERIA METADATA
+#   - 'name'      : Full display name
+#   - 'unit'      : Measurement unit
+#   - 'objective' : 'min' (lower is better) or 'max' (higher is better)
+# =============================================================================
+_criteria_rows = _read_rows(DATA_DIR / "criteria.csv")
+CRITERIA_KEYS = [row["key"] for row in _criteria_rows]
+CRITERIA = [
+    {"name": row["name"], "unit": row["unit"], "objective": row["objective"]}
+    for row in _criteria_rows
+]
+
+# =============================================================================
+# SECTION 2: ALTERNATIVES + DECISION MATRIX
+# Rows    → Alternatives (networks)
+# Columns → Criteria, in the same order as CRITERIA
+# =============================================================================
+_matrix_rows = _read_rows(DATA_DIR / "decision_matrix.csv")
+ALTERNATIVES = [row["network"] for row in _matrix_rows]
+DECISION_MATRIX = np.array(
+    [[float(row[key]) for key in CRITERIA_KEYS] for row in _matrix_rows],
+    dtype=float,
+)
+
+
+# =============================================================================
+# SECTION 3: PREDEFINED AHP SCENARIOS
 # Scale: 1=Equal, 3=Moderate, 5=Strong, 7=Very Strong, 9=Extreme importance.
-#
-# Criteria order in the matrix:
-#   [0] Energy Consumption
-#   [1] Range / Coverage
-#   [2] Data Rate
-#   [3] Total Cost
-#   [4] Latency
+# Fractions such as "1/3" are allowed in the CSV files.
 # =============================================================================
+def load_pairwise_matrix(path: Path) -> np.ndarray:
+    """Reads an AHP pairwise comparison matrix (criteria order = CRITERIA_KEYS)."""
+    rows = {row["criterion"]: row for row in _read_rows(path)}
+    return np.array(
+        [[float(Fraction(rows[i][j])) for j in CRITERIA_KEYS] for i in CRITERIA_KEYS],
+        dtype=float,
+    )
+
 
 SCENARIOS = {
-
     "1": {
         "name": "Smart Agriculture (Remote Sensor Monitoring)",
+        "slug": "smart_agriculture",
         "description": (
             "Long-range coverage and low energy are critical.\n"
             "Low data rate and high latency are acceptable.\n"
             "Cost matters but is secondary."
         ),
-        "matrix": np.array([
-            # Energy  Range  DataRate  Cost  Latency
-            [1,       1/3,   5,        2,    7      ],  # Energy
-            [3,       1,     7,        3,    9      ],  # Range
-            [1/5,     1/7,   1,        1/3,  2      ],  # DataRate
-            [1/2,     1/3,   3,        1,    5      ],  # Cost
-            [1/7,     1/9,   1/2,      1/5,  1      ],  # Latency
-        ], dtype=float)
+        "matrix": load_pairwise_matrix(SCENARIO_DIR / "1_smart_agriculture.csv"),
     },
-
     "2": {
         "name": "Smart Factory (Industrial Automation)",
+        "slug": "smart_factory",
         "description": (
             "Ultra-low latency and high data rate are critical.\n"
             "Range is moderate. Energy and cost are secondary."
         ),
-        "matrix": np.array([
-            # Energy  Range  DataRate  Cost  Latency
-            [1,       2,     1/5,      1/2,  1/7    ],  # Energy
-            [1/2,     1,     1/7,      1/3,  1/9    ],  # Range
-            [5,       7,     1,        3,    1/2    ],  # DataRate
-            [2,       3,     1/3,      1,    1/5    ],  # Cost
-            [7,       9,     2,        5,    1      ],  # Latency
-        ], dtype=float)
+        "matrix": load_pairwise_matrix(SCENARIO_DIR / "2_smart_factory.csv"),
     },
-
     "3": {
         "name": "Smart City (Asset Tracking)",
+        "slug": "smart_city",
         "description": (
             "Cost and coverage are the top priorities.\n"
             "Energy efficiency also matters.\n"
             "Data rate and latency are less critical."
         ),
-        "matrix": np.array([
-            # Energy  Range  DataRate  Cost  Latency
-            [1,       1/2,   3,        1/2,  5      ],  # Energy
-            [2,       1,     5,        1/2,  7      ],  # Range
-            [1/3,     1/5,   1,        1/5,  2      ],  # DataRate
-            [2,       2,     5,        1,    7      ],  # Cost
-            [1/5,     1/7,   1/2,      1/7,  1      ],  # Latency
-        ], dtype=float)
+        "matrix": load_pairwise_matrix(SCENARIO_DIR / "3_smart_city.csv"),
     },
-
     "4": {
         "name": "Custom Scenario (Manual Input)",
+        "slug": "custom",
         "description": (
             "You will enter your own pairwise comparison matrix manually.\n"
             "Useful for testing a specific IoT use case."
         ),
-        "matrix": None   # Will be filled interactively in main.py
-    }
+        "matrix": None,  # Will be filled interactively in main.py
+    },
 }

@@ -1,0 +1,7 @@
+network,energy_mw,range_km,data_rate_kbps,cost_usd_year,latency_ms
+LoRaWAN,50,10,50,100,500
+Sigfox,25,40,0.1,50,6000
+NB-IoT,300,10,250,200,1500
+LTE-M,400,10,1000,400,100
+Wi-Fi,1000,0.1,54000,150,10
+BLE,15,0.1,1000,80,10

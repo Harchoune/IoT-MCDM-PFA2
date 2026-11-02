@@ -1,0 +1,6 @@
+criterion,energy_mw,range_km,data_rate_kbps,cost_usd_year,latency_ms
+energy_mw,1,1/2,3,1/2,5
+range_km,2,1,5,1/2,7
+data_rate_kbps,1/3,1/5,1,1/5,2
+cost_usd_year,2,2,5,1,7
+latency_ms,1/5,1/7,1/2,1/7,1

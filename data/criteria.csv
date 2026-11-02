@@ -1,0 +1,6 @@
+key,name,unit,objective
+energy_mw,Energy Consumption,mW,min
+range_km,Range / Coverage,km,max
+data_rate_kbps,Data Rate,kbps,max
+cost_usd_year,Total Cost,USD/year,min
+latency_ms,Latency,ms,min
